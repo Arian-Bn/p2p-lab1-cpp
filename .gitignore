@@ -1,0 +1,27 @@
+# Сборка
+build/
+cmake-build-*/
+*.o
+*.exe
+*.out
+*.a
+*.so
+*.dll
+
+# Редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Системные
+core
+*.log
+*.tmp
+
+# Проект
+server
+client
+third
