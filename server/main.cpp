@@ -29,6 +29,12 @@ int main() {
 
     std::cout << "Received: " << std::string(buf.data(), len) << std::endl;
 
+std::string response = "Hello from server! I got your message: " + 
+                           std::string(buf.data(), len);
+    
+    boost::asio::write(socket, boost::asio::buffer(response));
+    std::cout << "Response sent: " << response << std::endl;
+
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;
