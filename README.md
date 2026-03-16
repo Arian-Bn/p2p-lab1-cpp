@@ -31,5 +31,5 @@ mkdir build && cd build
 cmake ..
 make```
 
-./server  # в первом терминале
-./client  # во втором терминале
+./server
+./client
