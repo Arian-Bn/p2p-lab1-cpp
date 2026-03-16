@@ -21,7 +21,4 @@ core
 *.log
 *.tmp
 
-# Проект
-server
-client
-third
+
