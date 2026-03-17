@@ -21,4 +21,7 @@ core
 *.log
 *.tmp
 
+# Другие правила...
+kod.txt
+repomix-output.xml
 
