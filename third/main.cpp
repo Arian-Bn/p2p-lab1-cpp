@@ -12,15 +12,15 @@ int main() {
 
     boost::asio::io_context io_context;
 
-    // Слушает порт 9001
-    boost::asio::ip::tcp::acceptor accpector(
+    // Слушает порт 9002
+    boost::asio::ip::tcp::acceptor acceptor(
         io_context,
-        boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 9001));
-    std::cout << "Relay listening on port 9001..." << std::endl;
+        boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 9002));
+    std::cout << "Relay listening on port 9002..." << std::endl;
 
     // Принимаем клиента (первый микросервис)
     boost::asio::ip::tcp::socket client_socket(io_context);
-    accpector.accept(client_socket);
+    acceptor.accept(client_socket);
     std::cout << "Client connected to relay!" << std::endl;
 
     // Подключаемся к серверу (второй микросервис)
@@ -48,7 +48,7 @@ int main() {
 
     // Пересылаем клиенту
     boost::asio::write(client_socket, boost::asio::buffer(buf, len));
-    std::cout << "Relay forwerded response to client" << std::endl;
+    std::cout << "Relay forwarded response to client" << std::endl;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;

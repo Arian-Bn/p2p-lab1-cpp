@@ -13,7 +13,7 @@ int main() {
 
     boost::asio::ip::tcp::socket socket(io_context);
     boost::asio::ip::tcp::resolver resolver(io_context);
-    auto endpoint = resolver.resolve("127.0.0.1", "9000");
+    auto endpoint = resolver.resolve("127.0.0.1", "9002");
 
     boost::asio::connect(socket, endpoint);
     std::cout << "Connected to server!" << std::endl;

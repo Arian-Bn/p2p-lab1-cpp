@@ -1,0 +1,300 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+client/
+  main.cpp
+server/
+  main.cpp
+third/
+  main.cpp
+.gitignore
+CMakeLists.txt
+kod.txt
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="kod.txt">
+ðŸ“¦ Repomix v1.11.1
+
+No custom config found at repomix.config.ts, repomix.config.mts, repomix.config.cts, repomix.config.js, repomix.config.mjs, repomix.config.cjs, repomix.config.json5, repomix.config.jsonc, repomix.config.json or global config at /home/arian/.config/repomix/repomix.config.ts, /home/arian/.config/repomix/repomix.config.mts, /home/arian/.config/repomix/repomix.config.cts, /home/arian/.config/repomix/repomix.config.js, /home/arian/.config/repomix/repomix.config.mjs, /home/arian/.config/repomix/repomix.config.cjs, /home/arian/.config/repomix/repomix.config.json5, /home/arian/.config/repomix/repomix.config.jsonc, /home/arian/.config/repomix/repomix.config.json.
+You can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.
+[36mâ ™[39m Collecting files...
+</file>
+
+<file path="third/main.cpp">
+#include <array>
+#include <boost/asio.hpp>
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/impl/write.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/registered_buffer.hpp>
+#include <iostream>
+
+int main() {
+  try {
+    std::cout << "Third service (relay) starting..." << std::endl;
+
+    boost::asio::io_context io_context;
+
+    // Слушает порт 9001
+    boost::asio::ip::tcp::acceptor accpector(
+        io_context,
+        boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 9002));
+    std::cout << "Relay listening on port 9002..." << std::endl;
+
+    // Принимаем клиента (первый микросервис)
+    boost::asio::ip::tcp::socket client_socket(io_context);
+    accpector.accept(client_socket);
+    std::cout << "Client connected to relay!" << std::endl;
+
+    // Подключаемся к серверу (второй микросервис)
+    boost::asio::ip::tcp::socket server_socket(io_context);
+    boost::asio::ip::tcp::resolver resolver(io_context);
+    auto endpoint = resolver.resolve("127.0.0.1", "9000");
+    boost::asio::connect(server_socket, endpoint);
+    std::cout << "Relay connected to server!" << std::endl;
+
+    // Получаем сообщение от клиента
+    std::array<char, 128> buf;
+    boost::system::error_code error;
+
+    size_t len = client_socket.read_some(boost::asio::buffer(buf), error);
+    std::cout << "Relay received: " << std::string(buf.data(), len)
+              << std::endl;
+
+    // Пересылаем серверу
+    boost::asio::write(server_socket, boost::asio::buffer(buf, len));
+
+    // Получаем ответ от сервера
+    len = server_socket.read_some(boost::asio::buffer(buf), error);
+    std::cout << "Relay got response: " << std::string(buf.data(), len)
+              << std::endl;
+
+    // Пересылаем клиенту
+    boost::asio::write(client_socket, boost::asio::buffer(buf, len));
+    std::cout << "Relay forwerded response to client" << std::endl;
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
+
+  return 0;
+}
+</file>
+
+<file path="client/main.cpp">
+#include <array>
+#include <boost/asio.hpp>
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/asio/registered_buffer.hpp>
+#include <iostream>
+
+int main() {
+  try {
+    std::cout << "Client starting..." << std::endl;
+
+    boost::asio::io_context io_context;
+
+    boost::asio::ip::tcp::socket socket(io_context);
+    boost::asio::ip::tcp::resolver resolver(io_context);
+    auto endpoint = resolver.resolve("127.0.0.1", "9000");
+
+    boost::asio::connect(socket, endpoint);
+    std::cout << "Connected to server!" << std::endl;
+
+    std::string message = "Hello from client1";
+    boost::asio::write(socket, boost::asio::buffer(message));
+    std::cout << "Sent: " << message << std::endl;
+
+    std::array<char, 128> buf;
+    boost::system::error_code error;
+    size_t len = socket.read_some(boost::asio::buffer(buf), error);
+
+    if (!error) {
+      std::cout << "Received: " << std::string(buf.data(), len) << std::endl;
+    }
+
+  } catch (const std::exception &e) {
+    std::cerr << "Errro: " << e.what() << std::endl;
+    return 1;
+  }
+
+  return 0;
+}
+</file>
+
+<file path="server/main.cpp">
+#include <array>
+#include <boost/asio.hpp>
+#include <iostream>
+
+int main() {
+  try {
+    std::cout << "Server starting..." << std::endl;
+
+    boost::asio::io_context io_context;
+    boost::asio::ip::tcp::acceptor acceptor(
+        io_context,
+        boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 9000));
+    std::cout << "Server listening on port 9000..." << std::endl;
+
+    boost::asio::ip::tcp::socket socket(io_context);
+    acceptor.accept(socket);
+    std::cout << "Client connected!" << std::endl;
+
+    std::array<char, 128> buf;
+    boost::system::error_code error;
+
+    std::size_t len = socket.read_some(boost::asio::buffer(buf), error);
+
+    if (error == boost::asio::error::eof) {
+      std::cout << "Connection closed by client" << std::endl;
+    } else if (error) {
+      throw boost::system::system_error(error);
+    }
+
+    std::cout << "Received: " << std::string(buf.data(), len) << std::endl;
+
+std::string response = "Hello from server! I got your message: " + 
+                           std::string(buf.data(), len);
+    
+    boost::asio::write(socket, boost::asio::buffer(response));
+    std::cout << "Response sent: " << response << std::endl;
+
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
+
+  return 0;
+}
+</file>
+
+<file path=".gitignore">
+# Сборка
+build/
+cmake-build-*/
+*.o
+*.exe
+*.out
+*.a
+*.so
+*.dll
+
+# Редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Системные
+core
+*.log
+*.tmp
+</file>
+
+<file path="CMakeLists.txt">
+cmake_minimum_required(VERSION 3.10)
+# Подавляем ворнинг о старом способе поиска
+cmake_policy(SET CMP0167 OLD)
+project(Lab1_p2p)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Boost REQUIRED COMPONENTS filesystem)
+
+add_executable(server server/main.cpp)
+target_link_libraries(server PRIVATE Boost::filesystem)
+
+add_executable(client client/main.cpp)
+target_link_libraries(client PRIVATE Boost::filesystem)
+
+add_executable(third third/main.cpp)
+target_link_libraries(third PRIVATE Boost::headers)
+</file>
+
+<file path="README.md">
+# P2P Lab1 C++
+
+Лабораторная работа №1 - Работа с пиринговыми сетями в среде .NET (реализация на C++)
+
+## Описание
+
+Реализация двух экспериментов с микросервисами и пиринговыми сетями с использованием Boost.Asio.
+
+### Эксперимент 1
+Создание 2-3 микросервисов, подключенных к определенным портам для:
+- Передачи/приема сообщений
+- Считывания параметров
+- Работы с ресурсами
+
+### Эксперимент 2
+Поиск пиров в двух режимах:
+- **Полностью децентрализованный** - пиры ищут друг друга самостоятельно
+- **Гибридный** - с центральной таблицей пиров (как в торрент-трекере)
+
+## Технологии
+
+- C++20
+- Boost.Asio (сетевые взаимодействия)
+- CMake (сборка)
+
+
+## Сборка
+
+```bash
+mkdir build && cd build
+cmake ..
+make```
+
+./server
+./client
+</file>
+
+</files>

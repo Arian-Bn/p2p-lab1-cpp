@@ -6,13 +6,13 @@ project(Lab1_p2p)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(Boost REQUIRED)
 
 add_executable(server server/main.cpp)
-target_link_libraries(server PRIVATE Boost::filesystem)
+target_link_libraries(server PRIVATE Boost::headers)
 
 add_executable(client client/main.cpp)
-target_link_libraries(client PRIVATE Boost::filesystem)
+target_link_libraries(client PRIVATE Boost::headers)
 
 add_executable(third third/main.cpp)
 target_link_libraries(third PRIVATE Boost::headers)
