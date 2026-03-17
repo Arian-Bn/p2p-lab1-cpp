@@ -14,3 +14,5 @@ target_link_libraries(server PRIVATE Boost::filesystem)
 add_executable(client client/main.cpp)
 target_link_libraries(client PRIVATE Boost::filesystem)
 
+add_executable(third third/main.cpp)
+target_link_libraries(third PRIVATE Boost::headers)
