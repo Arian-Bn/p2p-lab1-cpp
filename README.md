@@ -32,4 +32,5 @@ cmake ..
 make```
 
 ./server
+./third
 ./client
