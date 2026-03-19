@@ -50,7 +50,7 @@ int main() {
       if (request == "get_all") {
         // Вернуть все параметры
         for (const auto &[key, value] : params) {
-          request += key + " = " + value + "\n";
+          response += key + " = " + value + "\n";
         }
       } else if (request.find("get ") == 0) {
         // Запрос конкретного параметра
