@@ -16,3 +16,6 @@ target_link_libraries(client PRIVATE Boost::headers)
 
 add_executable(third third/main.cpp)
 target_link_libraries(third PRIVATE Boost::headers)
+
+add_executable(peer1 peer1/main.cpp)
+target_link_libraries(peer1 PRIVATE Boost::headers)
