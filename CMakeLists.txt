@@ -21,4 +21,4 @@ add_executable(peer1 peer1/main.cpp)
 target_link_libraries(peer1 PRIVATE Boost::headers)
 
 add_executable(tracker tracker/main.cpp)
-target_link_librares(tracker PRIVATE Boost::headers)
+target_link_libraries(tracker PRIVATE Boost::headers)
