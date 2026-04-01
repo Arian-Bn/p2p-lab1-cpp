@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
   while (true) {
     std::this_thread::sleep_for(std::chrono::seconds(15));
 
-    response = send_to_tracker("get_peers" + my_addr);
+    response = send_to_tracker("get_peers " + my_addr);
     std::cout << "Updated peers from tracker: " << response << std::endl;
 
     std::stringstream ss2(response);
