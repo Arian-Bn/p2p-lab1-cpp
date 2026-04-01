@@ -1,7 +1,9 @@
 #include <array>
 #include <boost/asio.hpp>
+#include <boost/asio/buffer.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/impl/write.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <iostream>
 #include <mutex>
 #include <set>
@@ -10,41 +12,59 @@
 
 std::set<std::string> know_peers; // Список пиров
 std::mutex peers_mutex;
+std::string tracker_host = "127.0.0.1";
+int tracker_port = 9090;
 
-// Функция сервера(принимает спивок от других пиров)
+// Функция для отправки запросов к трекеру
+std::string send_to_tracker(const std::string &request) {
+  try {
+    boost::asio::io_context io_context;
+    boost::asio::ip::tcp::socket socket(io_context);
+    boost::asio::ip::tcp::resolver resolver(io_context);
+    auto endpoint =
+        resolver.resolve(tracker_host, std::to_string(tracker_port));
+    boost::asio::connect(socket, endpoint);
+    boost::asio::write(socket, boost::asio::buffer(request));
+
+    std::array<char, 1024> buf;
+    boost::system::error_code error;
+    size_t len = socket.read_some(boost::asio::buffer(buf), error);
+
+    if (!error) {
+      return std::string(buf.data(), len);
+    }
+  } catch (const std::exception &e) {
+    std::cerr << "Tracker communication error: " << e.what() << std::endl;
+    return "";
+  }
+}
+
+// Функция сервера (принимает от других пиров)
 void server_thread(int port) {
   try {
     boost::asio::io_context io_context;
     boost::asio::ip::tcp::acceptor acceptor(
         io_context,
         boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
-    std::cout << "Pear listening on port " << port << std::endl;
+    std::cout << "Peer listening on port " << port << std::endl;
 
     while (true) {
       boost::asio::ip::tcp::socket socket(io_context);
       acceptor.accept(socket);
 
-      // Читаем список пиров от другого пира
       std::array<char, 512> buf;
       boost::system::error_code error;
       size_t len = socket.read_some(boost::asio::buffer(buf), error);
 
       if (!error) {
         std::string received(buf.data(), len);
-        std::cout << "Received pear list: " << received << std::endl;
+        std::cout << "Received peer list: " << received << std::endl;
 
         std::lock_guard<std::mutex> lock(peers_mutex);
-
-        // Простой парсинг (разделитель пробел)
-        size_t pos = 0;
-        while (pos < received.size()) {
-          size_t space = received.find(' ', pos);
-          if (space == std::string::npos)
-            space = received.size();
-          std::string peer = received.substr(pos, space - pos);
-          if (!peer.empty())
-            know_peers.insert(peer);
-          pos = space + 1;
+        std::stringstream ss(received);
+        std::string peer;
+        while (ss >> peer) {
+          know_peers.insert(peer);
         }
       }
     }
@@ -54,16 +74,15 @@ void server_thread(int port) {
 }
 
 // Функция клиента (подключается к пиру и отправляет свой список)
-void connect_to_peer(const std::string &address, int port) {
+void connect_to_peer(const std::string &address, int port,
+                     const std::string &my_addr) {
   try {
     boost::asio::io_context io_context;
     boost::asio::ip::tcp::socket socket(io_context);
     boost::asio::ip::tcp::resolver resolver(io_context);
     auto endpoints = resolver.resolve(address, std::to_string(port));
-
     boost::asio::connect(socket, endpoints);
 
-    // Формируем список для отправки
     std::string peer_list;
     {
       std::lock_guard<std::mutex> lock(peers_mutex);
@@ -74,58 +93,44 @@ void connect_to_peer(const std::string &address, int port) {
 
     boost::asio::write(socket, boost::asio::buffer(peer_list));
     std::cout << "Sent peer list to " << address << ":" << port << std::endl;
-
   } catch (const std::exception &e) {
-    std::cerr << "Connection error: " << e.what() << std::endl;
+    std::cerr << "Connect error to " << address << ":" << port << " - "
+              << e.what() << std::endl;
   }
 }
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cout
-        << "Usage: ./peer <port> [initial_peer_address] [initial_peer_port]"
-        << std::endl;
+    std::cout << "Usage ./peer1 <port>" << std::endl;
     return 1;
   }
 
   int my_port = std::stoi(argv[1]);
+  std::string my_addr = "127.0.0.1:" + std::to_string(my_port);
+
+  // Регистрируемся в трекере
+  std::cout << "Registering with tracker..." << std::endl;
+  std::string response = send_to_tracker("register " + my_addr);
+  std::cout << "Tracker response: " << response << std::endl;
 
   // Добавляем себя в список
   {
-    std::lock_guard<std::mutex> lock(peers_mutex);
-    know_peers.insert("127.0.0.1:" + std::to_string(my_port));
+    std::lock_guard<std::mutex> lock(pthread_mutex_t);
+    know_peers.insert(my_addr);
   }
 
   // Запускаем серверный поток
   std::thread server(server_thread, my_port);
 
-  // Если передал начальный пир - подключаемся к нему
-  if (argc == 4) {
-    std::string peer_addr = argv[2];
-    int peer_port = std::stoi(argv[3]);
-    connect_to_peer(peer_addr, peer_port);
-  }
+  // Получаем список пиров от тракера
+  response = send_to_tracker("get_peers " + my_addr);
+  std::cout << "Peers from trakera: " << response << std::endl;
 
-  // Периодически рассылаем свой список всем известным пирам
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    std::set<std::string> current_peers;
-    {
-      std::lock_guard<std::mutex> lock(peers_mutex);
-      current_peers = know_peers;
-    }
-
-    for (const auto &peer : current_peers) {
-      if (peer == "127.0.0.1:" + std::to_string(my_port))
-        continue;
-
-      size_t colon = peer.find(':');
-      std::string addr = peer.substr(0, colon);
-      int port = std::stoi(peer.substr(colon + 1));
-      connect_to_peer(addr, port);
+  // Подключаемся к полученным пирам
+  std::stringstream ss(response);
+  std::string peer;
+  while (ss >> peer) {
+    if (peer != my_addr) {
     }
   }
-
-  server.join();
-  return 0;
 }
