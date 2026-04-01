@@ -4,9 +4,11 @@
 #include <boost/asio/connect.hpp>
 #include <boost/asio/impl/write.hpp>
 #include <boost/system/detail/error_code.hpp>
+#include <chrono>
 #include <iostream>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <string>
 #include <thread>
 
@@ -32,6 +34,8 @@ std::string send_to_tracker(const std::string &request) {
 
     if (!error) {
       return std::string(buf.data(), len);
+    } else {
+      return "Error tracker response!";
     }
   } catch (const std::exception &e) {
     std::cerr << "Tracker communication error: " << e.what() << std::endl;
@@ -115,7 +119,7 @@ int main(int argc, char *argv[]) {
 
   // Добавляем себя в список
   {
-    std::lock_guard<std::mutex> lock(pthread_mutex_t);
+    std::lock_guard<std::mutex> lock(peers_mutex);
     know_peers.insert(my_addr);
   }
 
@@ -124,13 +128,54 @@ int main(int argc, char *argv[]) {
 
   // Получаем список пиров от тракера
   response = send_to_tracker("get_peers " + my_addr);
-  std::cout << "Peers from trakera: " << response << std::endl;
+  std::cout << "Peers from tracker: " << response << std::endl;
 
   // Подключаемся к полученным пирам
   std::stringstream ss(response);
   std::string peer;
   while (ss >> peer) {
     if (peer != my_addr) {
+      size_t colon = peer.find(':');
+      if (colon != std::string::npos) {
+        std::string addr = peer.substr(0, colon);
+        int port = std::stoi(peer.substr(colon + 1));
+        connect_to_peer(addr, port, my_addr);
+      }
     }
   }
+
+  while (true) {
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+
+    response = send_to_tracker("get_peers" + my_addr);
+    std::cout << "Updated peers from tracker: " << response << std::endl;
+
+    std::stringstream ss2(response);
+    std::string new_peer;
+    while (ss2 >> new_peer) {
+      // Проверяем, знаем ли уже этого пира
+      bool already_know;
+      {
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        already_know = (know_peers.find(new_peer) != know_peers.end());
+      }
+
+      // Если новый и не я - подключаемся
+      if (!already_know && new_peer != my_addr) {
+        size_t colon = new_peer.find(':');
+        if (colon != std::string::npos) {
+          std::string addr = new_peer.substr(0, colon);
+          int port = std::stoi(new_peer.substr(colon + 1));
+          connect_to_peer(addr, port, my_addr);
+        }
+
+        // Добавляем в свой список
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        know_peers.insert(new_peer);
+      }
+    }
+  }
+
+  server.join();
+  return 0;
 }
