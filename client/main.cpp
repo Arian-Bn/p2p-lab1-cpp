@@ -38,11 +38,10 @@ int main(int argc, char *argv[]) {
     std::array<char, 512> buf;
     boost::system::error_code error;
     size_t len = socket.read_some(boost::asio::buffer(buf), error);
-    std::cout << "Client received: " << std::string(buf.data(), len)
-              << std::endl;
 
     if (!error) {
-      std::cout << "Received: " << std::string(buf.data(), len) << std::endl;
+      std::cout << "Client received: " << std::string(buf.data(), len)
+                << std::endl;
     }
 
   } catch (const std::exception &e) {
